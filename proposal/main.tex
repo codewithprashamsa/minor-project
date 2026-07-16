@@ -70,31 +70,31 @@
 
 % ─── TikZ styles ────────────────────────────────────────────────────────────
 \tikzset{
-  block/.style={rectangle, draw, fill=blue!10, rounded corners,
+  block/.style={rectangle, draw, fill=gray!10, rounded corners,
                 text width=2.8cm, text centered, minimum height=1cm, font=\small},
-  wideblock/.style={rectangle, draw, fill=blue!10, rounded corners,
+  wideblock/.style={rectangle, draw, fill=gray!10, rounded corners,
                 text width=3.8cm, text centered, minimum height=1cm, font=\small},
-  decision/.style={diamond, draw, fill=orange!20, text width=2.2cm,
+  decision/.style={diamond, draw, fill=gray!20, text width=2.2cm,
                    text centered, inner sep=0pt, font=\small},
   arrow/.style={-{Stealth[length=2mm]}, thick},
-  greenblock/.style={rectangle, draw, fill=green!15, rounded corners,
+  greenblock/.style={rectangle, draw, fill=gray!15, rounded corners,
                 text width=2.8cm, text centered, minimum height=1cm, font=\small},
-  redblock/.style={rectangle, draw, fill=red!15, rounded corners,
+  redblock/.style={rectangle, draw, fill=gray!25, rounded corners,
                 text width=2.8cm, text centered, minimum height=1cm, font=\small},
   % --- Layer-type styles for CNN architecture diagram ---
-  convlayer/.style={rectangle, draw=blue!70, fill=blue!15, rounded corners=3pt,
+  convlayer/.style={rectangle, draw=black!70, fill=gray!15, rounded corners=3pt,
                     text width=3.2cm, text centered, minimum height=0.85cm,
                     font=\small\bfseries},
-  normlayer/.style={rectangle, draw=cyan!70, fill=cyan!10, rounded corners=3pt,
+  normlayer/.style={rectangle, draw=black!60, fill=gray!10, rounded corners=3pt,
                     text width=3.2cm, text centered, minimum height=0.7cm,
                     font=\small},
-  poollayer/.style={rectangle, draw=orange!70, fill=orange!12, rounded corners=3pt,
+  poollayer/.style={rectangle, draw=black!60, fill=gray!20, rounded corners=3pt,
                     text width=3.2cm, text centered, minimum height=0.7cm,
                     font=\small},
-  droplayer/.style={rectangle, draw=red!60, fill=red!8, rounded corners=3pt,
+  droplayer/.style={rectangle, draw=black!60, fill=gray!8, rounded corners=3pt,
                     text width=3.2cm, text centered, minimum height=0.7cm,
                     font=\small},
-  denselayer/.style={rectangle, draw=green!60!black, fill=green!12, rounded corners=3pt,
+  denselayer/.style={rectangle, draw=black!70, fill=gray!15, rounded corners=3pt,
                      text width=3.2cm, text centered, minimum height=0.85cm,
                      font=\small\bfseries},
   inputlayer/.style={rectangle, draw=gray!80, fill=gray!10, rounded corners=3pt,
@@ -164,25 +164,23 @@
 
 This project proposes an open-set malware traffic classification framework that
 combines JA4 TLS fingerprinting with a 1D-Convolutional Neural Network (1D-CNN)
-and a softmax confidence-thresholding rejection layer. Operating exclusively on
-the unencrypted TLS Client\,Hello---without decrypting any payload---the system
-extracts JA4 fingerprints (with automatic JA3 fallback) and encodes them as
+and a softmax confidence-thresholding rejection layer. The system operates
+exclusively on the unencrypted TLS Client\,Hello---without decrypting any
+payload---and uses JA4 fingerprints (with automatic JA3 fallback) encoded as
 fixed-length numerical vectors for classification. Flows without a TLS handshake
-are marked \textit{no fingerprint} and excluded from the pipeline.
+are excluded from the pipeline.
 
-A softmax cutoff ($\max_c\,\hat{P}(y{=}c|\mathbf{x}) < 0.70 \Rightarrow$
-\textit{Unknown Malware}) flags out-of-distribution traffic and routes it to
-analysts, eliminating the closed-set fallacy under which novel malware families
-are silently misclassified. Training and evaluation are conducted on CIC-IDS\,2017;
-the open-set split trains on Emotet and TrickBot and withholds Zeus as the unknown
-family. Class imbalance is addressed through inverse-frequency class weighting
-rather than synthetic oversampling. Two baselines are compared: Random Forest on
-the same JA4 feature vectors and a JA3-CNN. Dropout\,(0.5) and early stopping
-mitigate overfitting on the short feature vectors.
+A softmax cutoff flags out-of-distribution traffic and routes it to analysts,
+eliminating the closed-set fallacy under which novel malware families are silently
+misclassified. The system is trained on known malware families and evaluated on
+an entirely unseen family to demonstrate open-set detection capability. Class
+imbalance is addressed through inverse-frequency class weighting. Two baselines
+are compared: Random Forest on the same JA4 feature vectors and a JA3-CNN.
+Dropout and early stopping mitigate overfitting on the short feature vectors.
 
 \vspace{0.1cm}
 \noindent\textbf{Keywords:} Malware Traffic Classification, TLS Fingerprinting,
-JA4, 1D-CNN, Open-Set Recognition, Softmax Thresholding, CIC-IDS, Encrypted
+JA4, 1D-CNN, Open-Set Recognition, Softmax Thresholding, Encrypted
 Traffic Analysis
 
 % ─── Table of Contents / Lists ──────────────────────────────────────────────
@@ -259,81 +257,67 @@ of 204 days~\cite{ibm2023breach}, a window largely attributable to this failure.
 
 \section{Problem Statement}
 
-\subsection{Research Gap}
-
-Two compounding weaknesses characterise current encrypted malware detection:
-
-\begin{enumerate}[leftmargin=*, label=\arabic*.]
-  \item \textbf{Closed-Set Fallacy.} Deep learning classifiers trained on known
-  families cannot flag genuinely unknown traffic. Novel malware is silently
-  misclassified as the nearest known family, generating false
-  negatives~\cite{bendale2016openmax, opensetmalware2023}.
-
-  \item \textbf{Outdated Feature Standards.} Much prior work relies on JA3,
-  which is vulnerable to cipher-suite reordering and GREASE extension
-  randomisation. The integration of JA4 with open-set deep learning has not
-  been systematically explored in the literature~\cite{althouse2023ja4}.
-\end{enumerate}
-
-\subsection{Impact}
-
-Failing to detect unknown encrypted malware allows APTs and botnets to establish
-prolonged dwell time inside organisational networks. Overly aggressive classifiers
-that force unknown traffic into known categories generate excessive false positives,
-overwhelming SOC analysts with alert fatigue and degrading response capability.
+Current encrypted malware detection systems suffer from two compounding weaknesses.
+First, deep learning classifiers trained under the closed-set assumption cannot flag
+genuinely unknown traffic; novel malware families are silently misclassified as the
+nearest known family, generating critical false negatives~\cite{bendale2016openmax,
+opensetmalware2023}. Second, much prior work relies on the JA3 fingerprinting
+standard, which is vulnerable to cipher-suite reordering and GREASE extension
+randomisation~\cite{althouse2023ja4}. When a novel malware family appears in a live
+network, these systems create a prolonged dwell time that can allow advanced threats
+to persist for months~\cite{ibm2023breach}, while overly aggressive classifiers that
+force unknown traffic into known categories generate excessive false positives,
+overwhelming SOC analysts with alert fatigue.
 
 \section{Objectives}
 
-The primary objective is to develop an open-set malware traffic classification
-system using JA4 fingerprinting and 1D-CNNs that classifies known families
-and flags unseen ones without decrypting TLS communications.
+\begin{itemize}[leftmargin=*]
+  \item Develop an open-set malware traffic classification system using JA4 fingerprinting and 1D-CNNs.
+  \item Classify known malware families and flag unseen ones without decrypting TLS communications.
+  \item Implement softmax confidence-thresholding for open-set rejection of unknown traffic.
+  \item Compare classification performance against Random Forest and JA3-CNN baselines.
+\end{itemize}
 
 
 
 \section{Scope}
 
-This project is scoped to the classification of TLS-encrypted network traffic at the flow level, utilizing only unencrypted TLS Client\,Hello handshake metadata parsed from the CIC-IDS\,2017 dataset. The feature extraction phase is limited to generating JA4 fingerprints, with a fallback to JA3 for malformed handshakes. Flows lacking a TLS handshake are marked \textit{no fingerprint} and excluded from the classification pipeline. The classification is performed using a 1D-Convolutional Neural Network, with open-set recognition implemented via a softmax confidence-thresholding layer set at $\theta = 0.70$. Active SSL/TLS decryption, payload inspection, EVT-based OpenMax calibration, live real-time network integration, and IoT or mobile-specific traffic classification are explicitly out of scope.
+This project is scoped to the classification of TLS-encrypted network traffic at the flow level, utilizing only unencrypted TLS Client\,Hello handshake metadata parsed from publicly available network traffic datasets. The feature extraction phase is limited to generating JA4 fingerprints, with a fallback to JA3 for malformed handshakes. Flows lacking a TLS handshake are marked \textit{no fingerprint} and excluded from the classification pipeline. The classification is performed using a 1D-Convolutional Neural Network, with open-set recognition implemented via a softmax confidence-thresholding layer set at $\theta = 0.70$. Active SSL/TLS decryption, payload inspection, EVT-based OpenMax calibration, live real-time network integration, and IoT or mobile-specific traffic classification are explicitly out of scope.
 
 % ═══════════════════════════════════════════════════════════════════════════
 %  CHAPTER 2 — LITERATURE REVIEW
 % ═══════════════════════════════════════════════════════════════════════════
 \chapter{Literature Review}
 
-Ten representative papers were reviewed across five thematic areas: TLS fingerprinting, deep learning for traffic classification, open-set recognition in network security, class imbalance strategies, and overfitting mitigation for short feature vectors. The literature reviews of these papers are detailed below.
+Ten representative papers were reviewed across five thematic areas: TLS fingerprinting, deep learning for traffic classification, open-set recognition in network security, class imbalance strategies, and overfitting mitigation for short feature vectors.
 
-\section{Anderson \& McGrew --- ML for Encrypted Malware (2017)}
-This study demonstrated the efficacy of using passive, unencrypted TLS handshake metadata to classify malware traffic. Utilizing a Random Forest classifier on a large, proprietary dataset of network flows, the authors achieved high detection rates by analyzing cipher suites, extensions, and the server name indication (SNI). However, their system was designed strictly under a closed-set assumption, and the static features remain vulnerable to active mimicry by sophisticated attackers who can spoof handshake metadata.
+\section{TLS Fingerprinting for Encrypted Traffic Analysis}
 
-\section{Wang et al. --- End-to-End Encrypted Traffic via 1D-CNN (2017)}
-The authors proposed applying deep learning directly to raw network packet data using 1D-CNNs, treating network traffic as a sequence of bytes. This end-to-end method bypassed manual feature engineering and showed superior classification accuracy on the ISCX VPN-nonVPN dataset compared to traditional machine learning baselines. However, processing raw byte sequences is highly resource-intensive and requires deep packet inspection (DPI), and the classification was limited to a closed-set environment.
+TLS fingerprinting has emerged as a primary technique for identifying applications and detecting malware in encrypted traffic without decryption. Anderson and McGrew (2017) demonstrated the efficacy of using passive, unencrypted TLS handshake metadata with a Random Forest classifier on a large proprietary dataset, achieving high detection rates by analyzing cipher suites, extensions, and SNI. However, their system operated under a closed-set assumption and remains vulnerable to active mimicry by sophisticated attackers who can spoof handshake metadata.
 
-\section{Bendale \& Boult --- OpenMax (2016)}
-This seminal work introduced the OpenMax model to extend deep neural networks to open-set recognition scenarios. OpenMax utilizes Extreme Value Theory (EVT) to calibrate the activation vectors (Meta-Recognition) of correct validation predictions, fitting a Weibull distribution to establish a threshold-based rejection score for unknown classes. Although demonstrated to improve accuracy on image classification (ImageNet), adapting EVT-calibrated OpenMax to network traffic analysis remains a challenging and relatively unexplored area of research.
+Sirinam et al. (2018) investigated the limits of TLS handshake fingerprinting (focusing on JA3) combined with Random Forest and SVM classifiers. Their evaluation showed that ML models could identify applications with high precision based only on Client Hello metadata, but the study was constrained by closed-set evaluation and relied on the JA3 standard, which is easily bypassed by modern cipher-suite randomization techniques. Burgetov\'{a} et al. (2025) examined the synergistic effect of combining the newer JA4+ fingerprinting standard with traditional flow-level statistical features using a hybrid ML approach on the CESNET TLS dataset, showing that fusing application-layer fingerprints with transport-layer features yields superior performance, though they did not explore deep learning architectures or open-set detection. L\'{o}pez de Vergara et al. (2025) presented an empirical comparison between JA4+ and traditional flow-level statistics (using the MalDIST tool), concluding that JA4+ is highly competitive, especially for identifying targeted client-side threats, but is limited when malware mimics legitimate browsers, suggesting the need for multi-modal verification or advanced thresholding.
 
-\section{Sirinam et al. --- TLS Fingerprinting + ML (2018)}
-This research investigated the limits of using TLS handshake fingerprinting (focusing on JA3) combined with Random Forest and Support Vector Machine classifiers to identify client applications and detect malware. The evaluation showed that machine learning models could identify applications with high precision based only on Client Hello negotiation metadata. Nevertheless, the study was constrained by closed-set evaluation and relied on the JA3 standard, which is easily bypassed by modern cipher suite randomization techniques.
+\section{Deep Learning for Encrypted Traffic Classification}
 
-\section{Liu et al. --- Semi-Supervised Multimodal Malware Detection (2024)}
-Focusing on class imbalance and the lack of labeled data, this paper introduced a semi-supervised multimodal deep learning model. Combining a 1D-CNN with autoencoders, the authors achieved an F1-score of 99.41\% on the UNSW-NB15 dataset using a fraction of labeled samples. The primary limitation of this work is its reliance on a closed-set dataset structure, which does not simulate the emergence of novel, unseen malware families.
+Deep learning has shown strong performance on sequence-structured network data. Wang et al. (2017) proposed applying 1D-CNNs directly to raw network packet bytes, treating traffic as a sequence of bytes. This end-to-end method bypassed manual feature engineering and outperformed classical ML baselines on the ISCX VPN-nonVPN dataset. However, processing raw byte sequences is highly resource-intensive, requires deep packet inspection, and the classification was limited to a closed-set environment.
 
-\section{SPDConv-Enhanced 1D-CNN (2025)}
-Published in the IEEE ICIBA proceedings, this paper introduced Space-to-Depth Convolution (SPDConv) blocks into the 1D-CNN architecture to accelerate inference speed on sequential network data. The authors demonstrated that replacing traditional strided convolution and pooling layers with SPDConv blocks minimizes latency on the CIC-IDS dataset without degrading classification accuracy. However, this study did not evaluate open-set scenarios or incorporate TLS fingerprinting.
+Liu et al. (2024) introduced a semi-supervised multimodal deep learning model combining a 1D-CNN with autoencoders to address class imbalance and lack of labeled data, achieving 99.41\% F1-score on UNSW-NB15 using a fraction of labeled samples, but remained within a closed-set structure. A later multi-modal 1D-CNN framework by Liu et al. (2025) took both raw packet bytes and header flow statistics as input branches through an encoder-decoder architecture, proving robust against payload obfuscation on USTC-TFC2016 and ISCX datasets, yet maintained a strict closed-set training environment. The SPDConv-Enhanced 1D-CNN (2025) introduced Space-to-Depth Convolution blocks to accelerate inference on sequential network data, minimizing latency on network traffic datasets without degrading accuracy, but did not evaluate open-set scenarios or incorporate TLS fingerprinting.
 
-\section{Burgetov\'{a} et al. --- JA4+ + Flow Features (2025)}
-This work examined the synergistic effect of combining the newer JA4+ fingerprinting standard with traditional flow-level statistical features (e.g., packet counts, packet sizes, and durations). Using a hybrid machine learning approach on the CESNET TLS dataset, the authors showed that fusing application-layer fingerprints with transport-layer flow features yields superior classification performance. The study did not explore deep learning architectures or open-set detection.
+\section{Open-Set Recognition in Network Security}
 
-\section{Liu et al. --- Multi-Modal 1D-CNN (2025)}
-The authors designed a multi-modal 1D-CNN framework that takes both raw packet bytes and header flow statistics as input branches, processing them through an encoder-decoder architecture. Tested on USTC-TFC2016 and ISCX datasets, the fused model proved robust against payload obfuscation. The limitation remains its strict closed-set training environment where all test categories are predefined.
+The closed-set fallacy---where classifiers force every test sample into known classes---remains a fundamental limitation in deployed systems. Bendale and Boult (2016) introduced OpenMax, extending deep networks to open-set recognition using Extreme Value Theory (EVT) to calibrate activation vectors and fit Weibull distributions for threshold-based rejection of unknown classes. While demonstrated on ImageNet with a 4.3\% accuracy gain over softmax thresholding, adapting EVT-calibrated OpenMax to network traffic analysis remains challenging and relatively unexplored.
 
-\section{L\'{o}pez de Vergara et al. --- JA4+ vs Flow Features (2025)}
-This study presented an empirical comparison between the detection capabilities of the JA4+ fingerprinting standard and traditional flow-level statistics (specifically using the MalDIST tool) for encrypted malware classification. The authors concluded that JA4+ is highly competitive, especially for identifying targeted client-side threats, but is limited when malware mimics legitimate browsers, suggesting the need for multi-modal verification or advanced thresholding.
+Chen et al. (2023) proposed an uncertainty-aware deep learning framework for open-set network traffic classification using predictive uncertainty estimation, successfully flagging unknown traffic flows in proprietary datasets. However, the model does not exploit TLS fingerprinting standards (JA4/JA3) and requires complex probability calibration during inference. These works collectively highlight that open-set recognition for network traffic is an active area, but the integration with modern TLS fingerprinting standards remains unexplored.
 
-\section{Chen et al. --- OSR for Malware Traffic (2023)}
-Published in MDPI Electronics, this paper proposed an uncertainty-aware deep learning framework for open-set network traffic classification. Using predictive uncertainty estimation, the classifier successfully flags unknown traffic flows in proprietary datasets. However, the model does not exploit TLS handshake fingerprinting standards (like JA4 or JA3) and requires complex probability calibration during inference.
+\section{Class Imbalance Strategies}
 
+Real-world malware datasets are heavily skewed. Liu et al. (2024) addressed this through semi-supervised learning with autoencoders, achieving high F1-scores with limited labeled data. A more direct approach for supervised settings is cost-sensitive learning. The Group \& Reweight method (2024) introduced a novel cost-sensitive approach to mitigate class imbalance in network traffic classification, showing that inverse-frequency class weighting achieves the same gradient-level upsampling effect without generating synthetic samples that may produce physically impossible TLS configurations. This aligns with the observation that SMOTE interpolation in feature space can create JA4 vectors with cipher-suite counts inconsistent with any real TLS implementation.
 
-Table~\ref{tab:litreview} presents all reviewed papers
-in a unified tabular format, followed by the research gap this project addresses.
+\section{Overfitting Mitigation for Short Feature Vectors}
+
+JA4 fingerprint vectors are short (approximately 20--40 dimensions after encoding), creating a high model-capacity-to-input ratio that leads to rapid memorization in deep architectures. Standard countermeasures include dropout in the fully-connected head and early stopping on validation loss. Srivastava et al. (2014) established dropout as a simple way to prevent overfitting, while Prechelt (2012) formalized early stopping with patience-based criteria. These techniques are well-understood and directly applicable to the 1D-CNN architecture proposed in this work.
+
+Table~\ref{tab:litreview} presents all reviewed papers in a unified tabular format.
 
 \clearpage
 \begin{longtable}{|>{\scriptsize}p{0.3cm}|
@@ -360,42 +344,39 @@ in a unified tabular format, followed by the research gap this project addresses
 \endfoot
 \hline
 \endlastfoot
-1 & Anderson \& McGrew --- ML for Encrypted Malware & 2017 & RF + TLS metadata &
+1 & ML for Encrypted Malware Traffic & 2017 & RF + TLS metadata &
 Proprietary TLS flows & TLS metadata identifies malware with high confidence &
 No open-set; JA3 evasion possible \\[2pt]
-2 & Wang et al. --- End-to-end Encrypted Traffic via 1D-CNN & 2017 & 1D-CNN on raw bytes &
+2 & End-to-End Encrypted Traffic via 1D-CNN & 2017 & 1D-CNN on raw bytes &
 ISCX VPN & 1D-CNNs outperform classical methods without feature engineering &
 Closed-set only; raw bytes require DPI \\[2pt]
-3 & Bendale \& Boult --- OpenMax & 2016 & EVT + OpenMax &
+3 & OpenMax: Open-Set Deep Networks & 2016 & EVT + OpenMax &
 ImageNet & 4.3\% accuracy gain over SoftMax thresholding &
 Vision domain; not tested on network traffic \\[2pt]
-4 & Sirinam et al. --- TLS Fingerprinting + ML & 2018 & RF + SVM on TLS metadata &
+4 & TLS Fingerprinting with ML & 2018 & RF + SVM on TLS metadata &
 Synthetic captures & Strong detection without payload access &
 Closed-set; JA3 only; no 1D-CNN \\[2pt]
-5 & Liu et al. --- Semi-Supervised Multimodal Malware Detection & 2024 & 1D-CNN + semi-supervised &
-UNSW-NB15, CIC-IDS & 99.51\% accuracy, 99.41\% F1 on UNSW-NB15 &
+5 & Semi-Supervised Multimodal Malware Detection & 2024 & 1D-CNN + semi-supervised &
+UNSW-NB15 & 99.51\% accuracy, 99.41\% F1 on UNSW-NB15 &
 Closed-set; no fingerprinting standard \\[2pt]
 6 & SPDConv-Enhanced 1D-CNN (IEEE ICIBA) & 2025 & SPDConv + 1D-CNN &
-CIC-IDS & Lower latency without accuracy loss &
+Network traffic & Lower latency without accuracy loss &
 Closed-set; no open-set evaluation \\[2pt]
-7 & Burgetov\'{a} et al. --- JA4+ + Flow Features & 2025 & Hybrid JA4+/flow stats &
+7 & JA4+ and Flow Feature Fusion & 2025 & Hybrid JA4+/flow stats &
 CESNET TLS dataset & Hybrid outperforms either modality alone &
 No deep learning; no open-set \\[2pt]
-8 & Liu et al. --- Multi-Modal 1D-CNN & 2025 & Encoder-decoder + 1D-CNN &
+8 & Multi-Modal 1D-CNN for Encrypted Traffic & 2025 & Encoder-decoder + 1D-CNN &
 USTC-TFC2016, ISCX & High accuracy on encrypted \& unencrypted traffic &
 Closed-set; no fingerprinting \\[2pt]
-9 & L\'{o}pez de Vergara et al. --- JA4+ vs Flow Features & 2025 & JA4+ vs MalDIST &
+9 & JA4+ versus Flow Features for Malware Detection & 2025 & JA4+ vs MalDIST &
 Proprietary captures & JA4+ competitive with flow features &
 No 1D-CNN; no open-set \\[2pt]
-10 & Chen et al. --- OSR for Malware Traffic (MDPI) & 2023 & Uncertainty-aware DL &
+10 & Open-Set Recognition for Malware Traffic & 2023 & Uncertainty-aware DL &
 Proprietary traffic & Unknown traffic flagged via predictive uncertainty &
 No TLS fingerprinting; complex inference \\[2pt]
 
 \end{longtable}
 
-% ═══════════════════════════════════════════════════════════════════════════
-%  SECTION 2.15 — THEORETICAL BACKGROUND
-% ═══════════════════════════════════════════════════════════════════════════
 \section{Theoretical Background}
 
 \subsection{TLS Handshake and the Client Hello}
@@ -408,9 +389,7 @@ signature algorithms; and an ALPN value indicating the desired application
 protocol (e.g., HTTP/2). These choices are determined by the client's TLS library
 configuration, making them highly characteristic per software type. A Windows
 binary compiled with OpenSSL 3.x produces a reliably different Client\,Hello
-profile from a browser, a Python script, or a Cobalt Strike beacon. CIC-IDS\,2017
-PCAP files include TLS flows from both benign HTTPS traffic and botnet
-command-and-control sessions. Flows that carry no TLS handshake (pure UDP,
+profile from a browser, a Python script, or a Cobalt Strike beacon. Publicly available network traffic datasets include TLS flows from both benign HTTPS traffic and botnet command-and-control sessions. Flows that carry no TLS handshake (pure UDP,
 non-TLS TCP, or mid-session captures) are \textbf{skipped} and labelled
 \textit{no fingerprint}; TLS handshake coverage is verified and reported as
 part of Step 1 of the pipeline.
@@ -505,11 +484,10 @@ The literature review reveals a clear and unaddressed opportunity: no existing
 published work combines JA4 fingerprinting, 1D-CNN classification, and an
 integrated open-set rejection mechanism in a single pipeline evaluated on a
 concrete family-level open-set split. Prior open-set approaches either target
-vision domains (rows 3, 13, 14) or lack TLS fingerprinting entirely (rows 10,
-15, 16). JA4-based studies are either classification-free (row 18) or closed-set
+vision domains (row 3) or lack TLS fingerprinting entirely (row 10).
+JA4-based studies are either classification-free (row 7) or closed-set
 (rows 7, 9). This project directly addresses that intersection with a lightweight,
-reproducible implementation evaluated on a named split: train on Emotet and
-TrickBot, test on Zeus as the unknown family.
+reproducible implementation.
 
 % ═══════════════════════════════════════════════════════════════════════════
 %  CHAPTER 3 — REQUIREMENT ANALYSIS
@@ -573,13 +551,13 @@ TrickBot, test on Zeus as the unknown family.
 \subsection{Technical Feasibility}
 All required tools are open-source and well-documented. JA4 parsing tools are
 available on GitHub under permissive licences. PyTorch provides mature primitives
-for 1D-CNN construction. CIC-IDS\,2017 is publicly available and widely used in
-the research community. Training on a mid-range GPU (e.g., NVIDIA RTX 3060,
+for 1D-CNN construction. Publicly available network traffic datasets are widely used in
+the research community and provide genuine TLS handshake captures for evaluation. Training on a mid-range GPU (e.g., NVIDIA RTX 3060,
 12\,GB VRAM) or free-tier Google Colab is sufficient for the dataset size involved.
 
 \subsection{Economic Feasibility}
-All software dependencies are free and open-source. CIC-IDS\,2017 is freely
-downloadable. Cloud compute (Google Colab or Kaggle) provides GPU access at minimal
+All software dependencies are free and open-source. Publicly available network traffic datasets are freely
+downloadable from academic repositories. Cloud compute (Google Colab or Kaggle) provides GPU access at minimal
 cost.
 
 \subsection{Operational Feasibility}
@@ -709,10 +687,10 @@ fingerprinted flows through the neural classifier and the rejection layer.
 \label{fig:arch}
 \end{figure}
 \vspace{0.3cm}
-\captionsetup{justification=centering}
+{\captionsetup{justification=centering}
 \small
 PCAP ingestion $\to$ TLS handshake check $\to$ JA4 extraction (with JA3 fallback) $\to$ numerical encoding $\to$ 1D-CNN classification $\to$ softmax confidence thresholding. 
-Flows scoring below the threshold are routed to the SOC as \textit{Unknown Malware}.
+Flows scoring below the threshold are routed to the SOC as \textit{Unknown Malware}.}
 
 \newpage
 \subsection{Use Case Diagram}
@@ -723,7 +701,7 @@ The primary actors and system interactions are described in this section. The pr
 \centering
 \begin{tikzpicture}[
   actor/.style={draw, circle, minimum size=0.8cm, thick, fill=white},
-  usecase/.style={draw, ellipse, minimum width=3.2cm, minimum height=0.8cm, align=center, fill=blue!5, font=\small, thick},
+  usecase/.style={draw, ellipse, minimum width=3.2cm, minimum height=0.8cm, align=center, fill=gray!5, font=\small, thick},
   system/.style={draw, rectangle, minimum width=6cm, minimum height=8.5cm, thick, fill=gray!3, rounded corners=3pt}
 ]
   % System boundary
@@ -765,7 +743,7 @@ The system block diagram illustrates the major functional blocks of the open-set
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}[
-  block/.style={draw, rectangle, minimum width=3.5cm, minimum height=1.2cm, align=center, fill=blue!5, font=\small, thick, rounded corners=3pt},
+  block/.style={draw, rectangle, minimum width=3.5cm, minimum height=1.2cm, align=center, fill=gray!5, font=\small, thick, rounded corners=3pt},
   arrow/.style={-{Stealth[length=2.5mm]}, thick}
 ]
   \node (pcap) [block] {PCAP Ingestion \\ (Scapy / PyShark)};
@@ -788,9 +766,9 @@ The activity diagram describes the sequential workflow and decision paths execut
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}[
-  startstop/.style={draw, rectangle, rounded corners=10pt, minimum width=2cm, minimum height=0.8cm, align=center, fill=red!10, thick},
-  process/.style={draw, rectangle, minimum width=3cm, minimum height=0.8cm, align=center, fill=blue!5, thick},
-  decision/.style={draw, diamond, aspect=2, minimum width=2.5cm, minimum height=1cm, align=center, fill=orange!10, thick},
+  startstop/.style={draw, rectangle, rounded corners=10pt, minimum width=2cm, minimum height=0.8cm, align=center, fill=gray!15, thick},
+  process/.style={draw, rectangle, minimum width=3cm, minimum height=0.8cm, align=center, fill=gray!5, thick},
+  decision/.style={draw, diamond, aspect=2, minimum width=2.5cm, minimum height=1cm, align=center, fill=gray!10, thick},
   arrow/.style={-{Stealth[length=2.5mm]}, thick}
 ]
   \node (start) [startstop] {Start};
@@ -867,13 +845,13 @@ over-parameterisation. Figure~\ref{fig:cnn_arch} illustrates the architecture.
 
   % --- Group boxes ---
   \begin{scope}[on background layer]
-    \node[groupbox, fill=blue!3,
+    \node[groupbox, fill=gray!3,
           fit=(c1)(bn1)(mp1),
           label={[grouplabel]above right:{Conv Block 1}}] {};
-    \node[groupbox, fill=blue!3,
+    \node[groupbox, fill=gray!3,
           fit=(c2)(bn2)(gmp),
           label={[grouplabel]above right:{Conv Block 2}}] {};
-    \node[groupbox, fill=green!3,
+    \node[groupbox, fill=gray!5,
           fit=(drop)(fc1)(out),
           label={[grouplabel]above right:{Classifier Head}}] {};
   \end{scope}
@@ -886,11 +864,7 @@ over-parameterisation. Figure~\ref{fig:cnn_arch} illustrates the architecture.
   \node[shapelabel, right=0.4cm of fc1] {64};
   \node[shapelabel, right=0.4cm of out] {$N$};
 \end{tikzpicture}
-\caption{Proposed 1D-CNN Architecture. Colour key: {\color{blue!70}\rule{0.6em}{0.6em}}~Convolution,
-{\color{cyan!70}\rule{0.6em}{0.6em}}~Normalisation,
-{\color{orange!70}\rule{0.6em}{0.6em}}~Pooling,
-{\color{red!60}\rule{0.6em}{0.6em}}~Regularisation,
-{\color{green!60!black}\rule{0.6em}{0.6em}}~Dense.}
+\caption{Proposed 1D-CNN Architecture}
 \label{fig:cnn_arch}
 \end{figure}
 
@@ -946,9 +920,9 @@ the Emotet or TrickBot class.
 \label{fig:openset}
 \end{figure}
 \vspace{0.3cm}
-\captionsetup{justification=centering}
+{\captionsetup{justification=centering}
 \small
-The model trains on Emotet and TrickBot flows; Zeus flows are withheld from training entirely and presented at test time as the unknown family. Correct rejections (Zeus flagged as \textit{Unknown}) are true positives for the open-set AUROC metric.
+The model trains on Emotet and TrickBot flows; Zeus flows are withheld from training entirely and presented at test time as the unknown family. Correct rejections (Zeus flagged as \textit{Unknown}) are true positives for the open-set AUROC metric.}
 \newpage
 \section{Operational Workflow of the System}
 
@@ -959,7 +933,7 @@ and baseline comparison.
 \begin{figure}[H]
 \centering
 \begin{tikzpicture}[node distance=0.2cm and 0.6cm, scale=0.58]
-  \node[wideblock] (s1) {\textbf{Step 1}\\ Download CIC-IDS 2017\\ PCAP; verify TLS coverage};
+  \node[wideblock] (s1) {\textbf{Step 1}\\ Download Network Traffic\\ Dataset; verify TLS coverage};
   \node[wideblock, below=of s1] (s2) {\textbf{Step 2}\\ Scapy: isolate TLS\\ Client Hello packets};
   \node[wideblock, below=of s2] (s3) {\textbf{Step 3}\\ JA4 extraction\\ (JA3 fallback; log rates)};
   \node[wideblock, below=of s3] (s4) {\textbf{Step 4}\\ Feature encoding:\\ label encode + normalise};
@@ -982,16 +956,16 @@ and baseline comparison.
 \label{fig:workflow}
 \end{figure}
 \vspace{0.1cm}
-\captionsetup{justification=centering}
+{\captionsetup{justification=centering}
 \small
-Steps~1--5 (left column) cover PCAP acquisition, TLS handshake isolation, JA4 extraction, feature encoding, and open-set splitting. Steps~6--9 (right column) cover 1D-CNN training, softmax thresholding, evaluation, and baseline comparison.
+Steps~1--5 (left column) cover PCAP acquisition, TLS handshake isolation, JA4 extraction, feature encoding, and open-set splitting. Steps~6--9 (right column) cover 1D-CNN training, softmax thresholding, evaluation, and baseline comparison.}
 
 \subsection{Data Collection}
-A single dataset is used for all experiments: \textbf{CIC-IDS\,2017} (Canadian Institute for Cybersecurity Intrusion Detection Evaluation Dataset)~\cite{sharafaldin2018cicids}, capturing one week of realistic network traffic (July 3--7, 2017) across multiple attack types including botnet activity. Raw PCAP files are publicly available, allowing genuine JA4 extraction from packet captures rather than pre-computed flow statistics. TLS handshake coverage is verified and reported per malware family; flows lacking a complete handshake are excluded.
+A single publicly available network traffic dataset is used for all experiments, capturing realistic network traffic across multiple attack types including botnet activity. Raw PCAP files are publicly available, allowing genuine JA4 extraction from packet captures rather than pre-computed flow statistics. TLS handshake coverage is verified and reported per malware family; flows lacking a complete handshake are excluded.
 
 \textbf{Open-set split definition.} Training uses all Emotet and TrickBot flows plus a balanced benign sample. Zeus flows are withheld entirely from training and presented only at test time as the unknown family. This makes the split concrete and reproducible: any researcher can replicate it exactly by filtering on the published family labels.
 
-For the step-by-step data collection, the raw PCAP files are downloaded from the Canadian Institute for Cybersecurity repository. The SHA-256 checksums are verified. All PCAP files are scanned to count flows with and without TLS handshakes, reporting TLS coverage per family label. This confirms whether sufficient fingerprint-able traffic exists for each class.
+For the step-by-step data collection, raw PCAP files are downloaded from the Stratosphere Malware Capture Facility Project (CTU-Malware-Capture-Botnet series) hosted at \url{https://www.stratosphereips.org/datasets-malware}. This dataset provides long-term captures of real botnet traffic with per-flow family labels (Emotet, TrickBot, Zeus, and others) alongside normal background traffic. SHA-256 checksums are verified to ensure data integrity. All PCAP files are scanned to count flows with and without TLS handshakes, reporting TLS coverage per family label. This confirms whether sufficient fingerprint-able traffic exists for each class.
 
 \subsection{Data Preprocessing}
 Use Scapy to filter packets matching TLS record type 0x16 (Handshake) with handshake type 0x01 (Client Hello). Flows containing no such packet are marked \textit{no fingerprint} and excluded.
@@ -1073,9 +1047,9 @@ The project is planned across an eight-week timeline, divided into weekly milest
     group right shift=0,
     group top shift=0.4,
     group height=0.25,
-    bar/.append style={fill=blue!30, draw=blue!60},
-    group/.append style={fill=gray!30, draw=gray!60},
-    milestone/.append style={fill=red!60, draw=red!80},
+    bar/.append style={fill=gray!30, draw=gray!60},
+    group/.append style={fill=gray!20, draw=gray!50},
+    milestone/.append style={fill=gray!50, draw=gray!70},
     title height=1
  ]{1}{8}
 
@@ -1127,7 +1101,7 @@ The project is planned across an eight-week timeline, divided into weekly milest
 \chapter{Expected Results}
 
 \begin{enumerate}[leftmargin=*, label=\arabic*.]
-  \item \textbf{JA4 extraction pipeline} that processes CIC-IDS\,2017 PCAPs and
+  \item \textbf{JA4 extraction pipeline} that processes network traffic PCAPs and
   reports per-family JA4 success rates, JA3 fallback rates, and TLS handshake
   coverage, with documented code and unit tests.
 
@@ -1202,11 +1176,6 @@ Predictive Uncertainty,'' \textit{MDPI Electronics}, vol.~12, no.~2, 2023.
 ``Group \& Reweight: A Novel Cost-Sensitive Approach to Mitigating Class
 Imbalance in Network Traffic Classification,'' \textit{arXiv:2409.19214}, 2024.
 
-\bibitem{sharafaldin2018cicids}
-I.~Sharafaldin \textit{et al.}, ``Toward Generating a New Intrusion Detection
-Dataset and Intrusion Traffic Characterization,'' in \textit{Proc.\ ICISSP},
-2018, pp.~108--116.
-
 \bibitem{srivastava2014dropout}
 N.~Srivastava \textit{et al.}, ``Dropout: A Simple Way to Prevent Neural Networks
 from Overfitting,'' \textit{J.\ Machine Learning Research}, vol.~15, no.~1,
@@ -1223,6 +1192,15 @@ Zscaler, ``State of Encrypted Attacks Report 2023,'' Zscaler ThreatLabz, 2023.
 \bibitem{ibm2023breach}
 IBM Security, ``Cost of a Data Breach Report 2023,'' IBM Corp., 2023.
 [Online]. Available: \url{https://www.ibm.com/reports/data-breach}
+
+\bibitem{stratosphere2024}
+Stratosphere Laboratory, ``Malware Capture Facility Project: CTU-Malware-Capture-Botnet,''
+Czech Technical University, 2024.
+[Online]. Available: \url{https://www.stratosphereips.org/datasets-malware}
+
+\bibitem{garcia2014}
+S.~Garcia \textit{et al.}, ``An Empirical Comparison of Botnet Detection Methods,''
+\textit{Computers \& Security}, vol.~45, pp.~100--123, 2014.
 
 \end{thebibliography}
 
